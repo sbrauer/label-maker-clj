@@ -6,14 +6,16 @@
    ))
 
 (defsc Person [this {:person/keys [name age]}]
-  {:initial-state (fn [{:keys [name age] :as params}] {:person/name name :person/age age}) }
+  {:query         [:person/name :person/age]
+   :initial-state (fn [{:keys [name age] :as params}] {:person/name name :person/age age}) }
   (dom/li
     (dom/h5 (str name "(age: " age ")"))))
 
 (def ui-person (comp/factory Person {:keyfn :person/name}))
 
 (defsc PersonList [this {:list/keys [label people]}]
-  {:initial-state
+  {:query [:list/label {:list/people (comp/get-query Person)}]
+   :initial-state
    (fn [{:keys [label]}]
      {:list/label  label
       :list/people (if (= label "Friends")
@@ -30,7 +32,9 @@
 
 ; Root's initial state becomes the entire app's initial state!
 (defsc Root [this {:keys [friends enemies]}]
-  {:initial-state (fn [params] {:friends (comp/get-initial-state PersonList {:label "Friends"})
+  {:query         [{:friends (comp/get-query PersonList)}
+                   {:enemies (comp/get-query PersonList)}]
+   :initial-state (fn [params] {:friends (comp/get-initial-state PersonList {:label "Friends"})
                                 :enemies (comp/get-initial-state PersonList {:label "Enemies"})}) }
   (dom/div
     (ui-person-list friends)
