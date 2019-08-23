@@ -1,0 +1,41 @@
+Ensure emacs config contains:
+```
+(add-to-list 'auto-mode-alist '("\\.cljs.*$" . clojurescript-mode))
+```
+
+In `deps.edn` of the clojurescript/fulco project, add a dev dependency on your version of cider/cider-nrepl.
+For example:
+```
+cider/cider-nrepl {:mvn/version "0.21.1"}
+```
+
+This presumes you're running shadow-cljs via
+`npx shadow-cljs server`
+Note the nREPL server port.
+For example...
+```
+$ npx shadow-cljs server
+shadow-cljs - config: /Users/sbrauer/source/fulcro_getting_started/app/shadow-cljs.edn  cli version: 2.8.48  node: v12.8.1
+shadow-cljs - starting via "clojure"
+shadow-cljs - HTTP server available at http://localhost:8000
+shadow-cljs - server version: 2.8.40 running at http://localhost:9630
+shadow-cljs - nREPL server started on port 60558
+```
+
+M-x cider-connect-clojurescript
+
+Host: localhost
+Port for localhost: use value from shadow-cljs server ouput
+Select ClojureScript REPL type: shadow-select
+Select shadow-cljs build (e.g. dev): main
+
+Switch to cider-repl buffer
+Namespace should be cljs.user; if not: `(in-ns 'cljs.user)`
+try: `(js/alert "Hello")`
+
+
+Note: One can configure a static nREPL port by adding:
+```
+:nrepl {:port 9000}
+```
+to the top-level of shadow-cljs.edn
