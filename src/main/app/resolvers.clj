@@ -1,45 +1,72 @@
 (ns app.resolvers
-  (:require
-    [com.wsscode.pathom.core :as p]
-    [com.wsscode.pathom.connect :as pc]))
+  (:require [com.wsscode.pathom.core :as p]
+            [com.wsscode.pathom.connect :as pc]))
 
-(def people-table
+(def label-table
   (atom
-   {1 {:person/id 1 :person/name "Sally" :person/age 32}
-    2 {:person/id 2 :person/name "Joe" :person/age 22}
-    3 {:person/id 3 :person/name "Fred" :person/age 11}
-    4 {:person/id 4 :person/name "Bobby" :person/age 55}}))
+   {:beds      {:label/id :beds      :label/color "#2452b5"}
+    :baths     {:label/id :baths     :label/color "#0f99bf"}
+    :ptype     {:label/id :ptype     :label/color "#d478f9"}
+    :cityst    {:label/id :cityst    :label/color "#d6b3f2"}
+    :price-lte {:label/id :price-lte :label/color "#53f237"}}))
 
-(def list-table
+;; "Query Part"
+(def qp-table
   (atom
-   {:friends {:list/id     :friends
-              :list/label  "Friends"
-              :list/people [1 2]}
-    :enemies {:list/id     :enemies
-              :list/label  "Enemies"
-              :list/people [4 3]}}))
+   {1 {:qp/id 1 :qp/pos [ 0  3] :qp/label :beds}
+    2 {:qp/id 2 :qp/pos [ 4  7] :qp/label :baths}
+    3 {:qp/id 3 :qp/pos [ 8 12] :qp/label :ptype}
+    4 {:qp/id 4 :qp/pos [13 19] :qp/label :cityst}
+    5 {:qp/id 5 :qp/pos [20 30] :qp/label :price-lte}}))
 
-;; Given :person/id, this can generate the details of a person
-(pc/defresolver person-resolver [env {:person/keys [id]}]
-  {::pc/input  #{:person/id}
-   ::pc/output [:person/name :person/age]}
-  (get @people-table id))
+(def q-table
+  (atom
+   {1 {:q/id 1
+       :q/input "2bd 2ba loft atl ga under 1500 for a family of 3"
+       :q/parts [1 2 3 4 5]}}))
 
-;; Given a :list/id, this can generate a list label and the people
-;; in that list (but just with their IDs)
-(pc/defresolver list-resolver [env {:list/keys [id]}]
-  {::pc/input  #{:list/id}
-   ::pc/output [:list/label {:list/people [:person/id]}]}
-  (when-let [list (get @list-table id)]
-    (assoc list
-      :list/people (mapv (fn [id] {:person/id id}) (:list/people list)))))
+(def qset-table
+  (atom
+   {:test {:qset/id :test
+           :qset/name "Batch-002"
+           :qset/queries [1]}}))
 
-(pc/defresolver friends-resolver [env input]
-  {::pc/output [{:friends [:list/id]}]}
-  {:friends {:list/id :friends}})
+(pc/defresolver label-resolver [env {:label/keys [id]}]
+  {::pc/input  #{:label/id}
+   ::pc/output [:label/color]}
+  (get @label-table id))
 
-(pc/defresolver enemies-resolver [env input]
-  {::pc/output [{:enemies [:list/id]}]}
-  {:enemies {:list/id :enemies}})
+(pc/defresolver qp-resolver [env {:qp/keys [id]}]
+  {::pc/input  #{:qp/id}
+   ::pc/output [:qp/pos {:qp/label [:label/id]}]}
+  (when-let [qp (get @qp-table id)]
+    (update qp :qp/label (fn [id] {:label/id id}))))
 
-(def resolvers [person-resolver list-resolver friends-resolver enemies-resolver])
+(pc/defresolver q-resolver [env {:q/keys [id]}]
+  {::pc/input  #{:q/id}
+   ::pc/output [:q/input {:q/parts [:qp/id]}]}
+  (when-let [q (get @q-table id)]
+    (update q :q/parts (partial mapv (fn [id] {:qp/id id})))))
+
+(pc/defresolver qset-resolver [env {:qset/keys [id]}]
+  {::pc/input  #{:qset/id}
+   ::pc/output [:qset/name {:qset/queries [:q/id]}]}
+  (when-let [qset (get @qset-table id)]
+    (update qset :qset/queries (partial mapv (fn [id] {:q/id id})))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Global resolvers
+(pc/defresolver queries-resolver [env input]
+  {::pc/output [{:queries [:qset/id]}]}
+  {:queries {:qset/id :test}})
+
+(pc/defresolver labels-resolver [env input]
+  {::pc/output [{:labels [:label/id]}]}
+  {:labels (map (fn [id] {:label/id id}) (keys @label-table))})
+
+(def resolvers [queries-resolver
+                qset-resolver
+                q-resolver
+                qp-resolver
+                label-resolver
+                labels-resolver])
