@@ -7,8 +7,8 @@
 
 (defn ^:export init []
   (app/mount! app ui/Root "app")
-  (df/load! app :friends ui/PersonList)
-  (df/load! app :enemies ui/PersonList)
+  (df/load! app :text-sets ui/TextSet)
+  (df/load! app :labels ui/Label)
   (js/console.log "Loaded"))
 
 (defn ^:export refresh []
