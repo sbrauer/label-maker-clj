@@ -9,7 +9,7 @@
    :ident :label/id}
   (dom/li
    (dom/div :.label
-            {:style {:background-color color}}
+            {:style {:backgroundColor color}}
             (pr-str #:label{:id id :color color}))))
 
 (def ui-label (comp/factory Label {:keyfn :label/id}))
@@ -22,6 +22,7 @@
 
 (defn analyze
   [input parts]
+  (prn {:input input :parts parts}) ; FIXME: del
   (let [schema (into (sorted-map)
                      (map (juxt :qp/pos :qp/label))
                      parts)
@@ -48,11 +49,14 @@
   {:query [:q/id :q/input {:q/parts (comp/get-query QP)}]
    :ident :q/id}
   (let [{:keys [output labels]} (analyze input parts)]
+    (prn [:labels labels])
    (dom/div
     (dom/h4 (str "QueryID: " id))
     (dom/h4 (str "Input: " input))
     (dom/h4 (str "Output: " output))
-    (dom/pre (with-out-str (pp/print-table labels))))))
+    (dom/pre (with-out-str (pp/print-table labels)))
+    (dom/h4 "Editor (WIP):")
+    (dom/div :.query-editor input))))
 
 (def ui-q (comp/factory Q {:keyfn :q/id}))
 

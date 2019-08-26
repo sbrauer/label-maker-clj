@@ -46,6 +46,7 @@
   {::pc/input  #{:q/id}
    ::pc/output [:q/input {:q/parts [:qp/id]}]}
   (when-let [q (get @q-table id)]
+    ;; FIXME: Around here is where we could split the input string up into a collection of chunks (FIXME: better name) where each chunk has an optional label.
     (update q :q/parts (partial mapv (fn [id] {:qp/id id})))))
 
 (pc/defresolver qset-resolver [env {:qset/keys [id]}]
