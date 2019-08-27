@@ -18,7 +18,6 @@
   {::pc/sym `add-qp}
   (log/info "Adding query part to query" q-id "at pos" pos "for label" label-id)
   (let [qp-id (res/next-qp-seq!)]
-    ;; FIXME: add new item to qp-table, then update q-table
     (swap! res/qp-table assoc qp-id {:qp/id qp-id :qp/pos pos :qp/label label-id})
     (swap! res/q-table update q-id update :q/parts conj qp-id)
     {:tempids {tempid qp-id}}))
