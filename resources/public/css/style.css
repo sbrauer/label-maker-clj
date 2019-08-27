@@ -22,3 +22,9 @@
 .label {
   color: white;
 }
+span.part-label {
+  padding: 5px;
+}
+span.part-label button {
+  margin-left: 5px;
+}

@@ -1,17 +1,18 @@
 (ns app.ui
   (:require [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
             [com.fulcrologic.fulcro.dom :as dom]
+            [app.mutations :as api]
             [cljs.pprint :as pp]
             [clojure.string :as str]))
 
 (defn analyze
   "Given an input string and a sequence of labeled parts (each with a label and a 2-tuple of position indices), return an ordered sequence of all parts (both labeled and unlabeled) of the string."
   [input parts]
-  (let [labeled-positions (transduce (map (fn [{:qp/keys [pos label]}]
+  (let [labeled-positions (transduce (map (fn [{:qp/keys [pos label id]}]
                                             (let [[start end] pos
                                                   ;;{:label/keys [id]} label
                                                   substr (subs input start end)]
-                                              {:str substr :label label :pos pos})))
+                                              {:id id :str substr :label label :pos pos})))
                                      conj
                                      []
                                      parts)
@@ -46,21 +47,27 @@
 
 ;;(def ui-qp (comp/factory QP {:keyfn (comp first :qp/pos)}))
 
+;; FIXME: should this be in a component (the QP component)?
 (defn present-part
-  [{:keys [pos str label] :as part}]
+  [{:keys [onDelete]} {:keys [pos str label id] :as part}]
   (let [color (:label/color label)]
-    ;; FIXME: remove unneeded attrs
-    (dom/span {:data-start (first pos) :data-end (last pos) :data-label-id (:label/id label) :style {:backgroundColor color}} str)))
+    ;; FIXME: remove unneeded attrs (originally added for debugging only)
+    ;; FIXME: Add a delete control for labelled spans
+    (dom/span :.part-label {:key (first pos) :data-start (first pos) :data-end (last pos) :data-label-id (:label/id label) :style {:backgroundColor color}}
+              str
+              (when label (dom/button {:onClick #(onDelete id)} "X")))))
 
 (defsc Q [this {:q/keys [id input parts]}]
   {:query [:q/id :q/input {:q/parts (comp/get-query QP)}]
    :ident :q/id}
-  (dom/div
-   (dom/h4 (str "QueryID: " id))
-   (dom/h4 (str "Input: " input))
-   (dom/h4 "Editor (WIP):")
-   ;;(dom/pre :.query-editor (with-out-str (pp/print-table (analyze input parts))))
-   (dom/div :.query-editor (map present-part (analyze input parts)))))
+  (let [delete-qp (fn [qp-id]
+                    (comp/transact! this [(api/delete-qp {:q/id id :qp/id qp-id})]))]
+    (dom/div
+     (dom/h4 (str "QueryID: " id))
+     (dom/h4 (str "Input: " input))
+     (dom/h4 "Editor (WIP):")
+     ;;(dom/pre :.query-editor (with-out-str (pp/print-table (analyze input parts))))
+     (dom/div :.query-editor (map (partial present-part {:onDelete delete-qp}) (analyze input parts))))))
 
 (def ui-q (comp/factory Q {:keyfn :q/id}))
 

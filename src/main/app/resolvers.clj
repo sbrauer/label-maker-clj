@@ -2,6 +2,7 @@
   (:require [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]))
 
+;; FIXME: remove from here (if the copy of it stays in ui ns) and move test
 (defn analyze
   "Given an input string and a sequence of labeled parts (each with a label and a 2-tuple of position indices), return an ordered sequence of all parts (both labeled and unlabeled) of the string."
   [input parts]
