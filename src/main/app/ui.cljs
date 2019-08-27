@@ -1,6 +1,7 @@
 (ns app.ui
   (:require [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
             [com.fulcrologic.fulcro.dom :as dom]
+            [com.fulcrologic.fulcro.algorithms.tempid :as tmp]
             [app.mutations :as api]
             [cljs.pprint :as pp]
             [clojure.string :as str]))
@@ -8,6 +9,7 @@
 (defn analyze
   "Given an input string and a sequence of labeled parts (each with a label and a 2-tuple of position indices), return an ordered sequence of all parts (both labeled and unlabeled) of the string."
   [input parts]
+  (prn "in analyze" parts) ; FIXME
   (let [labeled-positions (transduce (map (fn [{:qp/keys [pos label id]}]
                                             (let [[start end] pos
                                                   ;;{:label/keys [id]} label
@@ -47,7 +49,7 @@
 
 ;;(def ui-qp (comp/factory QP {:keyfn (comp first :qp/pos)}))
 
-;; FIXME: should this be in a component (the QP component)?
+;; FIXME: should this be in the QP component?
 (defn present-part
   [{:keys [onDelete]} {:keys [pos str label id] :as part}]
   (let [color (:label/color label)]
@@ -55,7 +57,7 @@
     ;; FIXME: Add a delete control for labelled spans
     (dom/span :.part-label {:key (first pos) :data-start (first pos) :data-end (last pos) :data-label-id (:label/id label) :style {:backgroundColor color}}
               str
-              (when label (dom/button {:onClick #(onDelete id)} "X")))))
+              (when label (dom/button {:onClick #(onDelete id) :title "Remove label"} "X")))))
 
 (defsc Q [this {:q/keys [id input parts]}]
   {:query [:q/id :q/input {:q/parts (comp/get-query QP)}]
@@ -67,7 +69,9 @@
      (dom/h4 (str "Input: " input))
      (dom/h4 "Editor (WIP):")
      ;;(dom/pre :.query-editor (with-out-str (pp/print-table (analyze input parts))))
-     (dom/div :.query-editor (map (partial present-part {:onDelete delete-qp}) (analyze input parts))))))
+     (dom/div :.query-editor (map (partial present-part {:onDelete delete-qp}) (analyze input parts)))
+     ;; FIXME: update with a form that let's the user enter the start/end pos and the label ID (a primitive step towards something fancier)
+     (dom/p (dom/button {:onClick #(comp/transact! this [(api/add-qp {:q/id id :qp/pos [37 43] :label/id :beds :tempid (tmp/tempid)})])} "label a part (wip demo)")))))
 
 (def ui-q (comp/factory Q {:keyfn :q/id}))
 

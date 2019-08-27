@@ -2,31 +2,6 @@
   (:require [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]))
 
-;; FIXME: remove from here (if the copy of it stays in ui ns) and move test
-(defn analyze
-  "Given an input string and a sequence of labeled parts (each with a label and a 2-tuple of position indices), return an ordered sequence of all parts (both labeled and unlabeled) of the string."
-  [input parts]
-  (let [labeled-positions (transduce (map (fn [{:qp/keys [pos label]}]
-                                            (let [[start end] pos
-                                                  {:label/keys [id]} label
-                                                  substr (subs input start end)]
-                                              {:str substr :label id :pos pos})))
-                                     conj
-                                     []
-                                     parts)
-        labeled-idxs (into #{} (mapcat (partial apply range)) (map :qp/pos parts))
-        unlabeled-positions (->> (map-indexed
-                                  vector
-                                  (reduce (fn [acc idx]
-                                            (assoc acc idx nil))
-                                          (vec input)
-                                          labeled-idxs))
-                                 (partition-by (comp some? second))
-                                 (filter (comp second first))
-                                 (map (fn [indexed-chars]
-                                        {:pos [(first (first indexed-chars)) (inc (first (last indexed-chars)))] :str (apply str (map second indexed-chars))})))]
-    (sort-by :pos (concat labeled-positions unlabeled-positions))))
-
 (def label-table
   (atom
    {:beds      {:label/id :beds      :label/color "#2452b5"}
@@ -43,6 +18,11 @@
     3 {:qp/id 3 :qp/pos [ 8 12] :qp/label :ptype}
     4 {:qp/id 4 :qp/pos [13 19] :qp/label :cityst}
     5 {:qp/id 5 :qp/pos [20 30] :qp/label :price-lte}}))
+
+;; A RDBMS-style sequence for IDs for QP while we're using atoms to simulate a real DB.
+(def qp-seq (atom 5)) ;; Initialize to largest id from qp-table
+(defn next-qp-seq! []
+  (swap! qp-seq inc))
 
 (def q-table
   (atom
