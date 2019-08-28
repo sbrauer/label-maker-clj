@@ -1,0 +1,39 @@
+/*
+ * Two column layout
+ */
+* {
+  box-sizing: border-box;
+}
+.column {
+  float: left;
+  padding: 10px;
+}
+.left {
+  width: 25%;
+}
+.right {
+  width: 75%;
+}
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/*
+ * Label Maker styling
+ */
+.label {
+  color: white;
+}
+span.phrase {
+  padding: 1ex;
+}
+span.phrase button {
+  margin-left: 1ex;
+}
+div.text-labeler-widget {
+  border: 1px solid #ccc;
+  padding: 1em;
+}
