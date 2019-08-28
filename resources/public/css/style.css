@@ -1,7 +1,9 @@
+/*
+ * Two column layout
+ */
 * {
   box-sizing: border-box;
 }
-/* Create two unequal columns that floats next to each other */
 .column {
   float: left;
   padding: 10px;
@@ -19,13 +21,19 @@
   clear: both;
 }
 
+/*
+ * Label Maker styling
+ */
 .label {
   color: white;
 }
-span.text-part {
-  padding: 5px;
+span.phrase {
+  padding: 1ex;
 }
-span.text-part button {
-  background-color: inherit;
-  margin-left: 5px;
+span.phrase button {
+  margin-left: 1ex;
+}
+div.text-labeler-widget {
+  border: 1px solid #ccc;
+  padding: 1em;
 }

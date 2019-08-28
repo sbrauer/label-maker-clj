@@ -7,22 +7,21 @@
             [clojure.string :as str]))
 
 (defn analyze
-  "Given an input string and a sequence of labeled parts (each with a label and a 2-tuple of position indices), return an ordered sequence of all parts (both labeled and unlabeled) of the string."
-  [input parts]
-  (let [labeled-positions (transduce (map (fn [{:qp/keys [pos label id]}]
+  "Given a raw text string and a sequence of labeled phrases, return an ordered sequence of _all_ phrases (both labeled and unlabeled)."
+  [raw phrases]
+  (let [labeled-positions (transduce (map (fn [{:phrase/keys [pos label id]}]
                                             (let [[start end] pos
-                                                  ;;{:label/keys [id]} label
-                                                  substr (subs input start end)]
+                                                  substr (subs raw start end)]
                                               {:id id :str substr :label label :pos pos})))
                                      conj
                                      []
-                                     parts)
-        labeled-idxs (into #{} (mapcat (partial apply range)) (map :qp/pos parts))
+                                     phrases)
+        labeled-idxs (into #{} (mapcat (partial apply range)) (map :phrase/pos phrases))
         unlabeled-positions (->> (map-indexed
                                   vector
                                   (reduce (fn [acc idx]
                                             (assoc acc idx nil))
-                                          (vec input)
+                                          (vec raw)
                                           labeled-idxs))
                                  (partition-by (comp some? second))
                                  (filter (comp second first))
@@ -40,29 +39,30 @@
 
 (def ui-label (comp/factory Label {:keyfn :label/id}))
 
-;; FIXME: This is unused; kill or try to merge in present-part ?
-(defsc QP [this {:qp/keys [id pos label] :as FIXME}]
-  {:query [:qp/id :qp/pos {:qp/label (comp/get-query Label)}]
-   :ident :qp/id}
+;; FIXME: This is unused; kill or try to merge in present-phrase ?
+(defsc Phrase [this {:phrase/keys [id pos label] :as FIXME}]
+  {:query [:phrase/id :phrase/pos {:phrase/label (comp/get-query Label)}]
+   :ident :phrase/id}
   ;;(dom/span (str FIXME))
   )
-;;(def ui-qp (comp/factory QP {:keyfn (comp first :qp/pos)}))
+;;(def ui-phrase (comp/factory Phrase {:keyfn (comp first :phrase/pos)}))
 
-;; FIXME: should this be in the QP component?
-(defn present-part
-  [{:keys [onDelete]} {:keys [pos str label id] :as part}]
+;; FIXME: should this be in the Phrase component?
+(defn present-phrase
+  [{:keys [onDelete]} {:keys [pos str label id] :as phrase}]
   (let [[start end] pos]
-    (dom/span :.text-part
+    (dom/span :.phrase
               {:key start
                :data-start start
                :data-end end
+               :title (:label/id label)
                :style {:backgroundColor (:label/color label)}}
               str
               (when label
-                (dom/button {:onClick #(onDelete id) :title "Remove label"} "X")))))
+                (dom/button {:onClick #(onDelete id) :title "Remove label"} "x")))))
 
 (defn maybe-label-selection
-  [component q-id]
+  [component text-id]
   (fn []
     (let [selection (.getSelection js/window)]
       (when-not (str/blank? (str selection))
@@ -71,52 +71,52 @@
               parent-el (.-parentElement focus-node)]
           (when (and (= anchor-node focus-node)
                      (= "span" (-> parent-el .-tagName str/lower-case))
-                     (= "text-part" (.-className parent-el)))
-            (when-let [part-start (some-> parent-el .-dataset .-start int)]
+                     (= "phrase" (.-className parent-el)))
+            (when-let [phrase-start (some-> parent-el .-dataset .-start int)]
               (let [[sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
-                    pos [(+ part-start sel-start) (+ part-start sel-end)]]
+                    pos [(+ phrase-start sel-start) (+ phrase-start sel-end)]]
                 ;; FIXME: don't hardcode the label id...
                 (comp/transact! component
-                                [(api/add-qp {:q/id q-id
-                                              :qp/pos pos
-                                              :label/id :beds
-                                              :tempid (tmp/tempid)})])))))))))
+                                [(api/add-phrase {:text/id text-id
+                                                  :phrase/pos pos
+                                                  :label/id :beds
+                                                  :tempid (tmp/tempid)})])))))))))
 
-(defsc Q [this {:q/keys [id input parts]}]
-  {:query [:q/id :q/input {:q/parts (comp/get-query QP)}]
-   :ident :q/id}
-  (let [delete-qp (fn [qp-id]
-                    (comp/transact! this [(api/delete-qp {:q/id id :qp/id qp-id})]))]
+(defsc Text [this {:text/keys [id raw phrases]}]
+  {:query [:text/id :text/raw {:text/phrases (comp/get-query Phrase)}]
+   :ident :text/id}
+  (let [delete-phrase (fn [phrase-id]
+                    (comp/transact! this [(api/delete-phrase {:text/id id :phrase/id phrase-id})]))]
     (dom/div
-     (dom/h4 (str "QueryID: " id))
-     (dom/h4 (str "Input: " input))
-     (dom/h4 "Editor (WIP):")
-     ;;(dom/pre (with-out-str (pp/print-table (analyze input parts))))
-     (dom/div :.query-editor (map (partial present-part {:onDelete delete-qp}) (analyze input parts)))
+     (dom/h4 (str "Text ID: " id))
+     (dom/h4 (str "Raw: " raw))
+     ;;(dom/pre (with-out-str (pp/print-table (analyze raw phrases))))
+     (dom/div :.text-labeler-widget (map (partial present-phrase {:onDelete delete-phrase}) (analyze raw phrases)))
      (dom/p (dom/button {:onClick (maybe-label-selection this id)} "label current selection")))))
 
-(def ui-q (comp/factory Q {:keyfn :q/id}))
+(def ui-text (comp/factory Text {:keyfn :text/id}))
 
-(defsc QSet [this {:qset/keys [id name queries]}]
-  {:query [:qset/id :qset/name {:qset/queries (comp/get-query Q)}]
-   :ident :qset/id}
+(defsc TextSet [this {:text-set/keys [id name texts]}]
+  {:query [:text-set/id :text-set/name {:text-set/texts (comp/get-query Text)}]
+   :ident :text-set/id}
   (dom/div
-   (dom/h4 (pr-str #:qset{:id id :name name}))
-   (dom/ul (map ui-q queries))))
+   (dom/h4 (str "Set ID: " id))
+   (dom/h4 (str "Set Name: " name))
+   (dom/ul (map ui-text texts))))
 
-(def ui-qset (comp/factory QSet))
+(def ui-text-set (comp/factory TextSet))
 
-(defsc Root [this {:keys [queries labels]}]
-  {:query [{:queries (comp/get-query QSet)}
-           {:labels  (comp/get-query Label)}]}
+(defsc Root [this {:keys [labels text-sets]}]
+  {:query [{:text-sets (comp/get-query TextSet)}
+           {:labels    (comp/get-query Label)}]}
   (dom/div
-   (dom/h2 "NLP")
+   (dom/h2 "Label Maker")
    (dom/div :.row
             (dom/div :.column.left
                      (dom/h3 "Labels")
                      (when labels
                        (dom/ul
-                        (map ui-label labels)))                     )
+                        (map ui-label labels))))
             (dom/div :.column.right
-                     (dom/h3 "Queries")
-                     (when queries (ui-qset queries))))))
+                     (dom/h3 "Text Sets")
+                     (when text-sets (ui-text-set text-sets))))))
