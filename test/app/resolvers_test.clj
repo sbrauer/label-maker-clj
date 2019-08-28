@@ -1,3 +1,5 @@
+;; FIXME: Move this test to proper NS and adjust to match current reality.
+;; At some point `analyze` was moved to another NS and modified.
 (ns app.resolvers-test
   (:require [clojure.test :refer :all]
             [app.resolvers :as sut]))
