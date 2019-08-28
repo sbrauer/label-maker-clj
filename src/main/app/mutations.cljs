@@ -6,7 +6,8 @@
 (defmutation delete-qp
   [{q-id :q/id qp-id :qp/id}]
   (action [{:keys [state]}]
-          (swap! state merge/remove-ident* [:qp/id qp-id] [:q/id q-id :q/parts]))
+          (swap! state merge/remove-ident* [:qp/id qp-id] [:q/id q-id :q/parts])
+          (swap! state update :qp/id dissoc qp-id))
   (remote [env] true))
 
 (defmutation add-qp
