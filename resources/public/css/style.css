@@ -24,11 +24,18 @@
 /*
  * Label Maker styling
  */
-.label {
+ul.labels {
+  list-style-type: none;
+}
+ul.labels button {
+  width: 100;
   color: white;
 }
 span.phrase {
   padding: 1ex;
+}
+span.phrase.labeled {
+  color: white;
 }
 span.phrase button {
   margin-left: 1ex;

@@ -29,13 +29,34 @@
                                         {:pos [(first (first indexed-chars)) (inc (first (last indexed-chars)))] :str (apply str (map second indexed-chars))})))]
     (sort-by :pos (concat labeled-positions unlabeled-positions))))
 
+(defn maybe-label-selection
+  [component label-id]
+  (fn []
+    (let [selection (.getSelection js/window)]
+      (when-not (str/blank? (str selection))
+        (let [anchor-node (.-anchorNode selection)
+              focus-node (.-focusNode selection)
+              parent-el (.-parentElement focus-node)
+              parent-data (.-dataset parent-el)]
+          (when (and (= anchor-node focus-node)
+                     (= "span" (-> parent-el .-tagName str/lower-case))
+                     (= "phrase" (.-className parent-el)))
+            (when-let [phrase-start (some-> parent-data .-start int)]
+              (let [[sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
+                    pos [(+ phrase-start sel-start) (+ phrase-start sel-end)]]
+                (comp/transact! component
+                                [(api/add-phrase {:text/id (-> parent-data .-textId int)
+                                                  :phrase/pos pos
+                                                  :label/id label-id
+                                                  :tempid (tmp/tempid)})])))))))))
+
 (defsc Label [this {:label/keys [id color]}]
   {:query [:label/id :label/color]
    :ident :label/id}
   (dom/li
-   (dom/div :.label
-            {:style {:backgroundColor color}}
-            (pr-str #:label{:id id :color color}))))
+   (dom/button {:style {:backgroundColor color}
+                :onClick (maybe-label-selection this id)
+                :title "Apply label to selected phrase"} (name id))))
 
 (def ui-label (comp/factory Label {:keyfn :label/id}))
 
@@ -49,38 +70,19 @@
 
 ;; FIXME: should this be in the Phrase component?
 (defn render-phrase
-  [{:keys [onDelete]} {:keys [pos str label id] :as phrase}]
+  [{:keys [onDelete text-id]} {:keys [pos str label id] :as phrase}]
   (let [[start end] pos]
     (dom/span :.phrase
               {:key start
                :data-start start
                :data-end end
+               :data-text-id text-id
                :title (:label/id label)
+               :className (when label "labeled")
                :style {:backgroundColor (:label/color label)}}
               str
               (when label
                 (dom/button {:onClick #(onDelete id) :title "Remove label"} "x")))))
-
-(defn maybe-label-selection
-  [component text-id]
-  (fn []
-    (let [selection (.getSelection js/window)]
-      (when-not (str/blank? (str selection))
-        (let [anchor-node (.-anchorNode selection)
-              focus-node (.-focusNode selection)
-              parent-el (.-parentElement focus-node)]
-          (when (and (= anchor-node focus-node)
-                     (= "span" (-> parent-el .-tagName str/lower-case))
-                     (= "phrase" (.-className parent-el)))
-            (when-let [phrase-start (some-> parent-el .-dataset .-start int)]
-              (let [[sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
-                    pos [(+ phrase-start sel-start) (+ phrase-start sel-end)]]
-                ;; FIXME: don't hardcode the label id...
-                (comp/transact! component
-                                [(api/add-phrase {:text/id text-id
-                                                  :phrase/pos pos
-                                                  :label/id :beds
-                                                  :tempid (tmp/tempid)})])))))))))
 
 (defsc Text [this {:text/keys [id raw phrases]}]
   {:query [:text/id :text/raw {:text/phrases (comp/get-query Phrase)}]
@@ -91,8 +93,7 @@
      (dom/h4 (str "Text ID: " id))
      (dom/h4 (str "Raw: " raw))
      ;;(dom/pre (with-out-str (pp/print-table (analyze raw phrases))))
-     (dom/div :.text-labeler-widget (map (partial render-phrase {:onDelete delete-phrase}) (analyze raw phrases)))
-     (dom/p (dom/button {:onClick (maybe-label-selection this id)} "label current selection")))))
+     (dom/div :.text-labeler-widget (map (partial render-phrase {:onDelete delete-phrase :text-id id}) (analyze raw phrases))))))
 
 (def ui-text (comp/factory Text {:keyfn :text/id}))
 
@@ -115,7 +116,7 @@
             (dom/div :.column.left
                      (dom/h3 "Labels")
                      (when labels
-                       (dom/ul
+                       (dom/ul :.labels
                         (map ui-label labels))))
             (dom/div :.column.right
                      (dom/h3 "Text Sets")
