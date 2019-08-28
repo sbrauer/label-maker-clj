@@ -51,12 +51,37 @@
 ;; FIXME: should this be in the QP component?
 (defn present-part
   [{:keys [onDelete]} {:keys [pos str label id] :as part}]
-  (dom/span :.part-label
-            {:key (first pos)
-             :style {:backgroundColor (:label/color label)}}
-            str
-            (when label
-              (dom/button {:onClick #(onDelete id) :title "Remove label"} "X"))))
+  (let [[start end] pos]
+    (dom/span :.text-part
+              {:key start
+               :data-start start
+               :data-end end
+               :style {:backgroundColor (:label/color label)}}
+              str
+              (when label
+                (dom/button {:onClick #(onDelete id) :title "Remove label"} "X")))))
+
+(defn maybe-label-selection
+  [component q-id]
+  (fn []
+    (let [selection (.getSelection js/window)]
+      (prn {:selection (str selection)}) ; FIXME del
+      ;; FIXME: Maybe refactor after working... the nested whens are kinda gross.
+      (when-not (str/blank? (str selection))
+        (let [anchor-node (.-anchorNode selection)
+              focus-node (.-focusNode selection)
+              span (.-parentElement focus-node)]
+          (when (and (= anchor-node focus-node)
+                     (= "text-part" (.-className span)))
+            (let [ds (.-dataset span)
+                  start (.-start ds)]
+              (when start
+                (let [start (int start)
+                      [sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
+                      pos [(+ start sel-start) (+ start sel-end)]]
+                  ;; FIXME: don't hardcode the label id...
+                  (comp/transact! component [(api/add-qp {:q/id q-id :qp/pos pos :label/id :beds :tempid (tmp/tempid)})])
+                  )))))))))
 
 (defsc Q [this {:q/keys [id input parts]}]
   {:query [:q/id :q/input {:q/parts (comp/get-query QP)}]
@@ -69,8 +94,9 @@
      (dom/h4 "Editor (WIP):")
      ;;(dom/pre (with-out-str (pp/print-table (analyze input parts))))
      (dom/div :.query-editor (map (partial present-part {:onDelete delete-qp}) (analyze input parts)))
-     ;; FIXME: update with a form that let's the user enter the start/end pos and the label ID (a primitive step towards something fancier)
-     (dom/p (dom/button {:onClick #(comp/transact! this [(api/add-qp {:q/id id :qp/pos [37 43] :label/id :beds :tempid (tmp/tempid)})])} "label a part (wip demo)")))))
+     ;; FIXME: ultimately replace with nice UI to label the currently selected text (assuming the selection is inside the query editor node)
+     (dom/p (dom/button {:onClick #(comp/transact! this [(api/add-qp {:q/id id :qp/pos [37 43] :label/id :beds :tempid (tmp/tempid)})])} "label a part (wip demo)")
+            (dom/button {:onClick (maybe-label-selection this id)} "label current selection")))))
 
 (def ui-q (comp/factory Q {:keyfn :q/id}))
 

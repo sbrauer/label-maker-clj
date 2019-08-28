@@ -22,10 +22,10 @@
 .label {
   color: white;
 }
-span.part-label {
+span.text-part {
   padding: 5px;
 }
-span.part-label button {
+span.text-part button {
   background-color: inherit;
   margin-left: 5px;
 }
