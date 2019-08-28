@@ -19,8 +19,8 @@
     4 {:qp/id 4 :qp/pos [13 19] :qp/label :cityst}
     5 {:qp/id 5 :qp/pos [20 30] :qp/label :price-lte}}))
 
-;; A RDBMS-style sequence for IDs for QP while we're using atoms to simulate a real DB.
-(def qp-seq (atom 5)) ;; Initialize to largest id from qp-table
+;; A RDBMS-inspired sequence for IDs for QP while we're using atoms to simulate a real DB.
+(def qp-seq (atom (apply max (conj (keys @qp-table) 0)))) ;; init to max ID or zero
 (defn next-qp-seq! []
   (swap! qp-seq inc))
 
