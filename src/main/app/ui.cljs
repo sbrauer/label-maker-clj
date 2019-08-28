@@ -65,23 +65,22 @@
   [component q-id]
   (fn []
     (let [selection (.getSelection js/window)]
-      (prn {:selection (str selection)}) ; FIXME del
-      ;; FIXME: Maybe refactor after working... the nested whens are kinda gross.
       (when-not (str/blank? (str selection))
         (let [anchor-node (.-anchorNode selection)
               focus-node (.-focusNode selection)
-              span (.-parentElement focus-node)]
+              parent-el (.-parentElement focus-node)]
           (when (and (= anchor-node focus-node)
-                     (= "text-part" (.-className span)))
-            (let [ds (.-dataset span)
-                  start (.-start ds)]
-              (when start
-                (let [start (int start)
-                      [sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
-                      pos [(+ start sel-start) (+ start sel-end)]]
-                  ;; FIXME: don't hardcode the label id...
-                  (comp/transact! component [(api/add-qp {:q/id q-id :qp/pos pos :label/id :beds :tempid (tmp/tempid)})])
-                  )))))))))
+                     (= "span" (-> parent-el .-tagName str/lower-case))
+                     (= "text-part" (.-className parent-el)))
+            (when-let [part-start (some-> parent-el .-dataset .-start int)]
+              (let [[sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
+                    pos [(+ part-start sel-start) (+ part-start sel-end)]]
+                ;; FIXME: don't hardcode the label id...
+                (comp/transact! component
+                                [(api/add-qp {:q/id q-id
+                                              :qp/pos pos
+                                              :label/id :beds
+                                              :tempid (tmp/tempid)})])))))))))
 
 (defsc Q [this {:q/keys [id input parts]}]
   {:query [:q/id :q/input {:q/parts (comp/get-query QP)}]
