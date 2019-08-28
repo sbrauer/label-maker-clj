@@ -39,7 +39,7 @@
 
 (def ui-label (comp/factory Label {:keyfn :label/id}))
 
-;; FIXME: This is unused; kill or try to merge in present-phrase ?
+;; FIXME: This is unused; kill or try to merge in render-phrase ?
 (defsc Phrase [this {:phrase/keys [id pos label] :as FIXME}]
   {:query [:phrase/id :phrase/pos {:phrase/label (comp/get-query Label)}]
    :ident :phrase/id}
@@ -48,7 +48,7 @@
 ;;(def ui-phrase (comp/factory Phrase {:keyfn (comp first :phrase/pos)}))
 
 ;; FIXME: should this be in the Phrase component?
-(defn present-phrase
+(defn render-phrase
   [{:keys [onDelete]} {:keys [pos str label id] :as phrase}]
   (let [[start end] pos]
     (dom/span :.phrase
@@ -91,7 +91,7 @@
      (dom/h4 (str "Text ID: " id))
      (dom/h4 (str "Raw: " raw))
      ;;(dom/pre (with-out-str (pp/print-table (analyze raw phrases))))
-     (dom/div :.text-labeler-widget (map (partial present-phrase {:onDelete delete-phrase}) (analyze raw phrases)))
+     (dom/div :.text-labeler-widget (map (partial render-phrase {:onDelete delete-phrase}) (analyze raw phrases)))
      (dom/p (dom/button {:onClick (maybe-label-selection this id)} "label current selection")))))
 
 (def ui-text (comp/factory Text {:keyfn :text/id}))
