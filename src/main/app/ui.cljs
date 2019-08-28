@@ -94,9 +94,7 @@
      (dom/h4 "Editor (WIP):")
      ;;(dom/pre (with-out-str (pp/print-table (analyze input parts))))
      (dom/div :.query-editor (map (partial present-part {:onDelete delete-qp}) (analyze input parts)))
-     ;; FIXME: ultimately replace with nice UI to label the currently selected text (assuming the selection is inside the query editor node)
-     (dom/p (dom/button {:onClick #(comp/transact! this [(api/add-qp {:q/id id :qp/pos [37 43] :label/id :beds :tempid (tmp/tempid)})])} "label a part (wip demo)")
-            (dom/button {:onClick (maybe-label-selection this id)} "label current selection")))))
+     (dom/p (dom/button {:onClick (maybe-label-selection this id)} "label current selection")))))
 
 (def ui-q (comp/factory Q {:keyfn :q/id}))
 
