@@ -8,19 +8,19 @@
 (defn analyze-text
   "Given a raw text string and a sequence of labeled phrases, return an ordered sequence of _all_ phrases (both labeled and unlabeled)."
   [raw phrases]
-  (let [labeled-idxs (into #{} (mapcat (partial apply range)) (map :phrase/pos phrases))
-        unlabeled-phrases (->> (map-indexed
-                                  vector
-                                  (reduce (fn [acc idx]
-                                            (assoc acc idx nil))
-                                          (vec raw)
-                                          labeled-idxs))
-                                 (partition-by (comp some? second))
-                                 (filter (comp second first))
-                                 (map (fn [indexed-chars]
-                                        {:phrase/pos [(first (first indexed-chars)) (inc (first (last indexed-chars)))]
-                                         ;; Avoid annoying warning: "component app.ui/Phrase's ident ([:phrase/id nil]) has a `nil` second element. This warning can be safely ignored if that is intended."
-                                         :phrase/id "unlabeled"})))]
+  (let [labeled-idxs (mapcat #(apply range (:phrase/pos %)) phrases)
+        unlabeled-phrases (->> labeled-idxs
+                               (reduce (fn [acc idx]
+                                         (assoc acc idx nil))
+                                       (vec raw))
+                               (map-indexed vector)
+                               (partition-by (comp some? second))
+                               (filter (comp second first))
+                               (map (fn [indexed-chars]
+                                      {:phrase/pos [(first (first indexed-chars))
+                                                    (inc (first (last indexed-chars)))]
+                                       ;; Avoid annoying warning: "component app.ui/Phrase's ident ([:phrase/id nil]) has a `nil` second element. This warning can be safely ignored if that is intended."
+                                       :phrase/id "unlabeled"})))]
     (sort-by :phrase/pos (concat phrases unlabeled-phrases))))
 
 (defn maybe-label-selection
