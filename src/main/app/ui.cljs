@@ -3,21 +3,13 @@
             [com.fulcrologic.fulcro.dom :as dom]
             [com.fulcrologic.fulcro.algorithms.tempid :as tmp]
             [app.mutations :as api]
-            [cljs.pprint :as pp]
             [clojure.string :as str]))
 
-(defn analyze
+(defn analyze-text
   "Given a raw text string and a sequence of labeled phrases, return an ordered sequence of _all_ phrases (both labeled and unlabeled)."
   [raw phrases]
-  (let [labeled-positions (transduce (map (fn [{:phrase/keys [pos label id]}]
-                                            (let [[start end] pos
-                                                  substr (subs raw start end)]
-                                              {:id id :str substr :label label :pos pos})))
-                                     conj
-                                     []
-                                     phrases)
-        labeled-idxs (into #{} (mapcat (partial apply range)) (map :phrase/pos phrases))
-        unlabeled-positions (->> (map-indexed
+  (let [labeled-idxs (into #{} (mapcat (partial apply range)) (map :phrase/pos phrases))
+        unlabeled-phrases (->> (map-indexed
                                   vector
                                   (reduce (fn [acc idx]
                                             (assoc acc idx nil))
@@ -26,10 +18,13 @@
                                  (partition-by (comp some? second))
                                  (filter (comp second first))
                                  (map (fn [indexed-chars]
-                                        {:pos [(first (first indexed-chars)) (inc (first (last indexed-chars)))] :str (apply str (map second indexed-chars))})))]
-    (sort-by :pos (concat labeled-positions unlabeled-positions))))
+                                        {:phrase/pos [(first (first indexed-chars)) (inc (first (last indexed-chars)))]
+                                         ;; Avoid annoying warning: "component app.ui/Phrase's ident ([:phrase/id nil]) has a `nil` second element. This warning can be safely ignored if that is intended."
+                                         :phrase/id "unlabeled"})))]
+    (sort-by :phrase/pos (concat phrases unlabeled-phrases))))
 
 (defn maybe-label-selection
+  "Gets the current browser selection; when non-empty and inside a single unlabelled phrase span, labels the phrase with the given label ID."
   [component label-id]
   (fn []
     (let [selection (.getSelection js/window)]
@@ -40,6 +35,7 @@
               parent-data (.-dataset parent-el)]
           (when (and (= anchor-node focus-node)
                      (= "span" (-> parent-el .-tagName str/lower-case))
+                     ;; Note that an already labeled span would have the className "phrase labeled".
                      (= "phrase" (.-className parent-el)))
             (when-let [phrase-start (some-> parent-data .-start int)]
               (let [[sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
@@ -60,17 +56,12 @@
 
 (def ui-label (comp/factory Label {:keyfn :label/id}))
 
-;; FIXME: This is unused; kill or try to merge in render-phrase ?
-(defsc Phrase [this {:phrase/keys [id pos label] :as FIXME}]
+(defsc Phrase [this
+               {:phrase/keys [id pos label]}
+               ;; The next arg is a map of computed options from the parent component.
+               {:keys [onDelete substr text-id]}]
   {:query [:phrase/id :phrase/pos {:phrase/label (comp/get-query Label)}]
    :ident :phrase/id}
-  ;;(dom/span (str FIXME))
-  )
-;;(def ui-phrase (comp/factory Phrase {:keyfn (comp first :phrase/pos)}))
-
-;; FIXME: should this be in the Phrase component?
-(defn render-phrase
-  [{:keys [onDelete text-id]} {:keys [pos str label id] :as phrase}]
   (let [[start end] pos]
     (dom/span :.phrase
               {:key start
@@ -80,20 +71,28 @@
                :title (:label/id label)
                :className (when label "labeled")
                :style {:backgroundColor (:label/color label)}}
-              str
+              substr
               (when label
                 (dom/button {:onClick #(onDelete id) :title "Remove label"} "x")))))
+
+(def ui-phrase (comp/factory Phrase {:keyfn (comp first :phrase/pos)}))
 
 (defsc Text [this {:text/keys [id raw phrases]}]
   {:query [:text/id :text/raw {:text/phrases (comp/get-query Phrase)}]
    :ident :text/id}
   (let [delete-phrase (fn [phrase-id]
-                    (comp/transact! this [(api/delete-phrase {:text/id id :phrase/id phrase-id})]))]
+                        (comp/transact! this [(api/delete-phrase {:text/id id :phrase/id phrase-id})]))]
     (dom/div
      (dom/h4 (str "Text ID: " id))
      (dom/h4 (str "Raw: " raw))
-     ;;(dom/pre (with-out-str (pp/print-table (analyze raw phrases))))
-     (dom/div :.text-labeler-widget (map (partial render-phrase {:onDelete delete-phrase :text-id id}) (analyze raw phrases))))))
+     (dom/div :.text-labeler-widget
+              (map (fn [p]
+                     (let [[start end] (:phrase/pos p)
+                           computed {:onDelete delete-phrase
+                                     :text-id id
+                                     :substr (subs raw start end)}]
+                       (ui-phrase (comp/computed p computed))))
+                   (analyze-text raw phrases))))))
 
 (def ui-text (comp/factory Text {:keyfn :text/id}))
 
