@@ -1,24 +1,41 @@
 /*
- * Two column layout
+ * Two column layout with fixed sidebar
  */
-* {
-  box-sizing: border-box;
+html {
+  height: 100%;
 }
-.column {
-  float: left;
-  padding: 10px;
+
+body {
+  margin: 0;
+  height: 100%;
 }
-.left {
-  width: 25%;
+
+#container {
+  height: 100%;
 }
-.right {
-  width: 75%;
+
+#sidebar {
+  display: inline-block;
+  vertical-align: top;
+  height: 100%;
+  width: 17%;
+  overflow: auto;
+  background-color: #eee;
+  border-right: 1px solid #ccc;
 }
-/* Clear floats after the columns */
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
+#sidebar-content {
+  padding: 1em;
+}
+
+#main {
+  display: inline-block;
+  vertical-align: top;
+  height: 100%;
+  width: 82%;
+  overflow: auto;
+}
+#main-content {
+  padding: 1em;
 }
 
 /*
@@ -43,4 +60,8 @@ span.phrase button {
 div.text-labeler-widget {
   border: 1px solid #ccc;
   padding: 1em;
+}
+#crumbtrail {
+  padding: 1em;
+  background-color: #eee;
 }
