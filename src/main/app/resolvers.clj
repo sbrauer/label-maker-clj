@@ -21,7 +21,7 @@
   [k id]
   {k id})
 
-(defn fix-phrase-labels
+(defn mapify-phrase-label-ids
   "Given a map representing a text entity/doc, replace each bare label id
   with {:label/id id} (which can be resolved by the label-resolver)"
   [text]
@@ -34,17 +34,9 @@
   {::pc/input  #{:text/id}
    ::pc/output [:text/raw {:text/phrases [:phrase/pos {:phrase/label [:label/id]}]}]}
   (when-let [text (db/text-for-id (:db-node env) id)]
-    (fix-phrase-labels text)))
+    (mapify-phrase-label-ids text)))
 
-;; This version of the resolver gets all the texts in one db query.
 (pc/defresolver text-set-resolver [env {:text-set/keys [id]}]
-  {::pc/input  #{:text-set/id}
-   ::pc/output [:text-set/name {:text-set/texts [:text/id :text/raw {:text/phrases [:phrase/pos {:phrase/label [:label/id]}]}]}]}
-  (assoc (select-keys (db/text-for-id (:db-node env) id) [:text-set/name])
-         :text-set/texts (map fix-phrase-labels (db/texts-for-set-id (:db-node env) id))))
-
-;; This version of the resolver just gets all of text IDs (which must later be resolved individually).
-(pc/defresolver text-set-resolver-alt [env {:text-set/keys [id]}]
   {::pc/input  #{:text-set/id}
    ::pc/output [:text-set/name {:text-set/texts [:text/id]}]}
   (assoc (select-keys (db/text-for-id (:db-node env) id) [:text-set/name])
