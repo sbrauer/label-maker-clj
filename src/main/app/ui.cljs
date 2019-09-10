@@ -41,7 +41,7 @@
               (let [[sel-start sel-end] (sort [(.-anchorOffset selection) (.-focusOffset selection)])
                     pos [(+ phrase-start sel-start) (+ phrase-start sel-end)]]
                 (comp/transact! component
-                                [(api/add-phrase {:text/id (->> parent-data .-textId (keyword "text"))
+                                [(api/add-phrase {:text/id (->> parent-data .-textId uuid)
                                                   :phrase/pos pos
                                                   :label/id label-id})])))))))))
 
@@ -100,8 +100,8 @@
    :route-segment ["text-set" :text-set/id]
    :will-enter (fn [app {:text-set/keys [id] :as route-params}]
                  ;;(log/info "Will enter text-set with route params " route-params)
-                 ;; At this point `id` is a string representing the non-namespaced ID, so let's convert to a namespaced keyword.
-                 (let [id (keyword "text-set" id)]
+                 ;; At this point `id` is a string, but we need to convert it to a uuid object...
+                 (let [id (uuid id)]
                    (dr/route-deferred [:text-set/id id]
                                       #(df/load app [:text-set/id id] TextSet
                                                 {:post-mutation `dr/target-ready
@@ -111,7 +111,7 @@
    (dom/div :#crumbtrail
             (dom/a {:href "#" :onClick #(dr/change-route this ["main"])} "Home")
             " / "
-            (str name "(" id ")"))
+            name)
    (dom/h3 name)
    (map ui-text texts)))
 
@@ -123,8 +123,8 @@
    :ident :text-set/id}
   (dom/div
    (dom/li (dom/a {:href "#"
-                   :onClick #(dr/change-route this ["text-set" (clojure.core/name id)])}
-                  (str name " (" id ")")))))
+                   :onClick #(dr/change-route this ["text-set" id])}
+                  name))))
 
 (def ui-text-set-choice (comp/factory TextSetChoice {:keyfn :text-set/id}))
 

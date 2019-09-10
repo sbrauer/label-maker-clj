@@ -81,27 +81,18 @@
   (map (partial tuple->map [:text-set/id :text-set/name])
        (q node
           '{:find [id name]
-            :where [[id :text-set/name name]]})))
-
-(defn texts-for-set-id
-  "Get all text docs for a specific set ID"
-  [node set-id]
-  (map (comp (partial replace-crux-id :text/id) :crux.query/doc first)
-       (q node {:find '[id]
-                :where '[[e :crux.db/id id]
-                         [e :text-set/id sid]]
-                :args [{'sid set-id}]
-                :full-results? true})))
+            :where [[id :text-set/name name]]
+            :order-by [[id :asc]]})))
 
 (defn text-ids-for-set-id
   "Get all text IDs for a specific set ID"
   [node set-id]
-  (->> (q node {:find '[id]
+  (map first
+       (q node {:find '[id]
                 :where '[[e :crux.db/id id]
                          [e :text-set/id sid]]
-                :args [{'sid set-id}]})
-       (map first)
-       set))
+                :args [{'sid set-id}]
+                :order-by '[[id :asc]]})))
 
 (defn text-for-id
   "Get text doc for a given ID"
@@ -124,24 +115,27 @@
                   (partial remove #(= pos (:phrase/pos %)))))
 
 (comment
-  (def sample-sets [{:crux.db/id :text-set/id1
+  (require '[clj-uuid :as uuid])
+  (def sample-sets [{:crux.db/id (uuid/v1)
                      :text-set/name "Example Text Set"}
-                    {:crux.db/id :text-set/id2
+                    {:crux.db/id (uuid/v1)
                      :text-set/name "Another Example Text Set"}])
-  (def sample-texts [{:crux.db/id :text/id1
-                      :text-set/id :text-set/id1
+  (def set1-id (:crux.db/id (first sample-sets)))
+  (def set2-id (:crux.db/id (second sample-sets)))
+  (def sample-texts [{:crux.db/id (uuid/v1)
+                      :text-set/id set1-id
                       :text/raw "2bd 2ba loft atl ga under 1500 for a family of 3"
                       :text/phrases #{{:phrase/pos [ 0  3] :phrase/label :beds}
                                       {:phrase/pos [ 4  7] :phrase/label :baths}
                                       {:phrase/pos [ 8 12] :phrase/label :ptype}
                                       {:phrase/pos [13 19] :phrase/label :cityst}
                                       {:phrase/pos [20 30] :phrase/label :price-lte}}}
-                     {:crux.db/id :text/id2
-                      :text-set/id :text-set/id1
+                     {:crux.db/id (uuid/v1)
+                      :text-set/id set1-id
                       :text/raw "Hello World"
                       :text/phrases #{}}
-                     {:crux.db/id :text/id3
-                      :text-set/id :text-set/id1
+                     {:crux.db/id (uuid/v1)
+                      :text-set/id set1-id
                       :text/raw "the quick brown fox jumps over the lazy dog"
                       :text/phrases #{}}])
   (defn seed-db!
@@ -151,12 +145,11 @@
   (defn add-lots-of-texts
     [node]
     ;; Let's generate a bunch of texts for set 2 to see how the UI behaves with lots of text items.
-    (let [base-id-num 10]
-      (put-docs! node (for [x (range 2000)]
-                        {:crux.db/id (keyword "text" (str "id" (+ x base-id-num)))
-                         :text-set/id :text-set/id2
-                         :text/raw "the quick brown fox jumps over the lazy dog"
-                         :text/phrases #{}}))))
+    (put-docs! node (for [x (range 2000)]
+                      {:crux.db/id (uuid/v1)
+                       :text-set/id set2-id
+                       :text/raw "the quick brown fox jumps over the lazy dog"
+                       :text/phrases #{}})))
 
   (def node (start-cluster-node))
 
