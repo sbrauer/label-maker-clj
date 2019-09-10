@@ -18,6 +18,6 @@
              ::p/plugins [(pc/connect-plugin {::pc/register resolvers})
                           p/error-handler-plugin]}))
 
-(defn api-parser [query]
+(defn api-parser [db-node query]
   (log/info "Process" query)
-  (pathom-parser {} query))
+  (pathom-parser {:db-node db-node} query))

@@ -7,7 +7,7 @@
 
 (defn ^:export init []
   (app/mount! app ui/Root "app")
-  (df/load! app :text-sets ui/TextSet)
+  ;;(df/load! app :text-sets ui/TextSet)
   (df/load! app :labels ui/Label)
   (js/console.log "Loaded"))
 
