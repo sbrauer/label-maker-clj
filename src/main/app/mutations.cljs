@@ -19,7 +19,7 @@
              ;; Normalize the labels for fulcro
              (vec (map (fn [p]
                          (update p :phrase/label #(vector :label/id %)))
-                       (:text/phrases (:current-text error))))))))
+                       (get-in error [:current-text :text/phrases])))))))
 
 (defmutation delete-phrase
   [{text-id :text/id phrase-pos :phrase/pos}]
