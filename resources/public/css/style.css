@@ -42,10 +42,11 @@ body {
  * Label Maker styling
  */
 ul.labels {
-  list-style-type: none;
+  list-style: none;
+  padding: 0;
 }
 ul.labels button {
-  width: 100;
+  width: 100%;
   color: white;
 }
 span.phrase {
