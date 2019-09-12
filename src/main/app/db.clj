@@ -29,9 +29,9 @@
                          [:crux.tx/put doc]))))
 
 (defn entity
-  [node entity-id]
-  (log/info "Getting crux entity:" entity-id)
-  (crux/entity (crux/db node) entity-id))
+  [node eid]
+  (log/info "Getting crux entity:" eid)
+  (crux/entity (crux/db node) eid))
 
 (defn q
   [node query]
@@ -48,15 +48,25 @@
 
 (defn entity-merge!
   "Merge a map of new-attrs into the specified entity."
-  [node entity-id new-attrs]
-  (let [prev (entity node entity-id)]
+  [node eid new-attrs]
+  (let [prev (entity node eid)]
     (put-docs! node [(merge prev new-attrs)])))
 
 (defn entity-update!
   "Update a single key of the specified entity, similar to `clojure.core/update`"
-  [node entity-id k f & rest]
-  (let [prev (entity node entity-id)]
-    (put-docs! node [(apply update (concat [prev k f] rest))])))
+  [node eid k f & args]
+  (let [prev (entity node eid)]
+    (put-docs! node [(apply update (concat [prev k f] args))])))
+
+(defn compare-and-swap!
+  "Performs a cas transaction, returning a boolean to indicate success status."
+  [node prev-doc new-doc]
+  (let [eid (:crux.db/id prev-doc)
+        tx (crux/submit-tx node [[:crux.tx/cas prev-doc new-doc]])
+        _ (crux/sync node (:crux.tx/tx-time tx) nil)
+        success? (crux/submitted-tx-updated-entity? node tx eid)]
+    (log/info "Compare-and-swap!" {:prev-doc prev-doc :new-doc new-doc :success? success?})
+    success?))
 
 (defn replace-crux-id
   "Given a doc, replace the generic crux ID field with the given ID keyword."
@@ -99,57 +109,42 @@
   [node text-id]
   (replace-crux-id :text/id (entity node text-id)))
 
-;;
-;; Domain-specific functions with side effects!
-;; FIXME: Are these too naive? Should they do validation or even use cas?
-
-(defn add-phrase!
-  [node text-id pos label-id]
-  (entity-update! node text-id :text/phrases
-                  conj
-                  {:phrase/pos pos :phrase/label label-id}))
-
-(defn remove-phrase!
-  [node text-id pos]
-  (entity-update! node text-id :text/phrases
-                  (partial remove #(= pos (:phrase/pos %)))))
-
 (comment
   (require '[clj-uuid :as uuid])
-  (def sample-sets [{:crux.db/id (uuid/v1)
-                     :text-set/name "Example Text Set"}
-                    {:crux.db/id (uuid/v1)
-                     :text-set/name "Another Example Text Set"}])
-  (def set1-id (:crux.db/id (first sample-sets)))
-  (def set2-id (:crux.db/id (second sample-sets)))
-  (def sample-texts [{:crux.db/id (uuid/v1)
-                      :text-set/id set1-id
-                      :text/raw "2bd 2ba loft atl ga under 1500 for a family of 3"
-                      :text/phrases #{{:phrase/pos [ 0  3] :phrase/label :beds}
-                                      {:phrase/pos [ 4  7] :phrase/label :baths}
-                                      {:phrase/pos [ 8 12] :phrase/label :ptype}
-                                      {:phrase/pos [13 19] :phrase/label :cityst}
-                                      {:phrase/pos [20 30] :phrase/label :price-lte}}}
-                     {:crux.db/id (uuid/v1)
-                      :text-set/id set1-id
-                      :text/raw "Hello World"
-                      :text/phrases #{}}
-                     {:crux.db/id (uuid/v1)
-                      :text-set/id set1-id
-                      :text/raw "the quick brown fox jumps over the lazy dog"
-                      :text/phrases #{}}])
+
   (defn seed-db!
     [node]
-    (put-docs! node (concat sample-sets sample-texts)))
+    (let [set-id (uuid/v1)]
+      (put-docs! node [{:crux.db/id set-id
+                        :text-set/name "Example Text Set"}
+                       {:crux.db/id (uuid/v1)
+                        :text-set/id set-id
+                        :text/raw "2bd 2ba loft atl ga under 1500 for a family of 3"
+                        :text/phrases #{{:phrase/pos [ 0  3] :phrase/label :beds}
+                                        {:phrase/pos [ 4  7] :phrase/label :baths}
+                                        {:phrase/pos [ 8 12] :phrase/label :ptype}
+                                        {:phrase/pos [13 19] :phrase/label :cityst}
+                                        {:phrase/pos [20 30] :phrase/label :price-lte}}}
+                       {:crux.db/id (uuid/v1)
+                        :text-set/id set-id
+                        :text/raw "Hello World"
+                        :text/phrases #{}}
+                       {:crux.db/id (uuid/v1)
+                        :text-set/id set-id
+                        :text/raw "the quick brown fox jumps over the lazy dog"
+                        :text/phrases #{}}])))
 
-  (defn add-lots-of-texts
+  (defn seed-db2!
     [node]
-    ;; Let's generate a bunch of texts for set 2 to see how the UI behaves with lots of text items.
-    (put-docs! node (for [x (range 2000)]
-                      {:crux.db/id (uuid/v1)
-                       :text-set/id set2-id
-                       :text/raw "the quick brown fox jumps over the lazy dog"
-                       :text/phrases #{}})))
+    ;; Let's generate a set with a bunch of texts to see how the UI behaves with lots of text items.
+    (let [set-id (uuid/v1)]
+      (put-docs! node [{:crux.db/id set-id
+                        :text-set/name "Another Example Text Set"}])
+      (put-docs! node (for [x (range 2000)]
+                        {:crux.db/id (uuid/v1)
+                         :text-set/id set-id
+                         :text/raw "the quick brown fox jumps over the lazy dog"
+                         :text/phrases #{}}))))
 
   (def node (start-cluster-node))
 
@@ -159,4 +154,5 @@
   ;; Example of using the db-node in a running system
   (seed-db! (:db-node @user/sys))
 
+  (full-query (:db-node @user/sys))
   )

@@ -153,7 +153,7 @@
   (case current-state
     :pending (dom/img {:alt "Loading..."
                        :src "/img/spinner.gif"})
-    :failed (dom/div "Oh dear... Loading seems to have failed.")
+    :failed (dom/div "Loading failed. Try re-loading the page.")
     (dom/div "Unknown route")))
 
 (def ui-top-router (comp/factory TopRouter))
