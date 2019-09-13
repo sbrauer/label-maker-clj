@@ -1,35 +1,45 @@
 (ns user
   (:require
-    [app.sys :as sys]
-    [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs refresh]]))
+   [rp.syringe.core :as syringe]
+   [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs refresh]]))
 
 ;; Ensure we only refresh the source we care about. This is important
 ;; because `resources` is on our classpath and we don't want to
 ;; accidentally pull source from there when cljs builds cache files there.
 (set-refresh-dirs "src/dev" "src/main")
 
-(defonce sys (atom nil))
+(def ^:dynamic *env*
+  "Make it easy to change the env at the REPL."
+  :dev)
 
-(defn start []
-  (if @sys
-    "System already running."
-    (do
-      (reset! sys (sys/start))
-      ;; Return nil to avoid printing the whole system in repl.
-      nil)))
-
-(defn stop []
-  (sys/stop @sys)
-  (reset! sys nil))
-
-(defn restart
-  "Stop the system, reload all source code, then restart the system.
-
-  See documentation of tools.namespace.repl for more information."
+(defn start
+  "Start system stored in the var #'rp.syringe.core/system"
   []
-  (stop)
-  (refresh :after 'user/start))
+  (if (syringe/system-running?)
+    :already-started
+    (let [env *env*]
+      (println "starting system in env: " env)
+      (syringe/start-application!
+       (syringe/build-system env "config.edn"))
+      :started)))
 
-(comment
-  (start)
-  (restart))
+(def go start)
+
+(defn stop
+  "Stop system stored in the var #'rp.syringe.core/system"
+  []
+  (if (syringe/system-running?)
+    (do (syringe/stop-system!)
+        :stopped)
+    :already-stopped))
+
+(defn system
+  "Return the syringe system."
+  []
+  syringe/system)
+
+(defn reset
+  []
+  (when (syringe/system-running?)
+    (stop))
+  (refresh :after 'user/go))

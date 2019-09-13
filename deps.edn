@@ -9,8 +9,14 @@
          juxt/crux-kafka        {:mvn/version "19.09-1.4.0-alpha"}
          ;; Using in-memory KV store for now; rockskv seems flaky :(
          ;;juxt/crux-rocksdb      {:mvn/version "19.09-1.4.0-alpha"}
-         }
+         com.stuartsierra/component  {:mvn/version "0.3.2"}
 
+         ;; Syringe and deps
+         com.rentpath/syringe        {:mvn/version "0.20.6"}
+         ring-logger                 {:mvn/version "0.7.7"}
+         ring/ring-defaults          {:mvn/version "0.2.3"}
+         ring/ring-json              {:mvn/version "0.5.0-beta1"}
+         compojure                   {:mvn/version "1.6.0"}}
 
  :aliases {:dev {:extra-paths ["src/dev"]
                  :extra-deps  {org.clojure/clojurescript   {:mvn/version "1.10.520"}
@@ -19,4 +25,6 @@
                                org.clojure/tools.namespace {:mvn/version "0.2.11"}
                                danlentz/clj-uuid           {:mvn/version "0.1.9"}
                                ;; FIXME: probably need to dep on this some other way (since not all users will be on the same cider version)
-                               cider/cider-nrepl          {:mvn/version "0.21.1"}}}}}
+                               cider/cider-nrepl          {:mvn/version "0.21.1"}}}}
+
+ :mvn/repos {"rentpath" {:url "https://nexus.tools.rentpath.com/repository/maven-releases/"}}}
