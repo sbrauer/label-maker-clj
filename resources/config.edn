@@ -1,0 +1,23 @@
+{:rp.config/default-key  :default
+ :rp.config/environments #{:dev :test :ci :qa :production}
+ :rp.config/app-config
+;; FIXME: Add :error-reporter (would need a sentry DSN) and :rp.syringe/handle-thread-exception that uses the error reporter
+ {:http-server
+  {:rp.syringe/init  #rp.config/var app.server/map->HttpServerComponent
+   :rp.syringe/using [:rp.syringe/ops
+                      ;; FIXME: add these at some point...?
+                      ;; :rp.syringe/metrics-recorder
+                      ;; :rp.syringe/health-checker
+                      :crux]
+   :port             #rp.config/env-var "JAVA_LISTENING_PORT"}
+
+  :crux
+  {:rp.syringe/init #rp.config/var app.db/map->CruxComponent
+   :crux-config {:bootstrap-servers #rp.config/env-value "DATASTORES_KAFKA_BOOTSTRAP_SERVERS"
+                 ;; Ideally we'd use rockskv (which persists to disk), but it seems flaky, so stick with MemKv for now.
+                 ;; :kv-backend "crux.kv.rocksdb.RocksKv"
+                 :kv-backend "crux.kv.memdb.MemKv"
+                 :db-dir "data/db"
+                 :event-log-dir "data/event-log"
+                 :tx-topic "label-maker-tx"
+                 :doc-topic "label-maker-doc"}}}}

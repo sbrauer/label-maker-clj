@@ -4,7 +4,9 @@
    [org.httpkit.server :as http]
    [com.fulcrologic.fulcro.server.api-middleware :as server]
    [ring.middleware.content-type :refer [wrap-content-type]]
-   [ring.middleware.resource :refer [wrap-resource]]))
+   [ring.middleware.resource :refer [wrap-resource]]
+   [com.stuartsierra.component :as component]
+   [rp.syringe.component.http-common :as http-common]))
 
 (def ^:private handler
   (fn [req]
@@ -25,5 +27,15 @@
     (wrap-resource "public")
     wrap-content-type))
 
-(defn start [{:keys [db-node] :as sys}]
-  (http/run-server (middleware db-node) {:port 3000}))
+(defrecord HttpServerComponent []
+  component/Lifecycle
+  (start [{:keys [port crux] :as component}]
+    (let [port (http-common/parse-maybe-int port)
+          full-handler (-> (middleware (:node crux))
+                           ;; Add ops, etc
+                           (http-common/required-routes component))]
+      (assoc component :stop-fn (http/run-server full-handler {:port port}))))
+  (stop [component]
+    (when-let [stop-fn (:stop-fn component)]
+      (stop-fn))
+    (dissoc component :stop-fn)))

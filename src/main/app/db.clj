@@ -1,21 +1,8 @@
 (ns app.db
   (:require [crux.api :as crux]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [com.stuartsierra.component :as component])
   (:import [crux.api ICruxAPI]))
-
-(defn start-cluster-node
-  ^crux.api.ICruxAPI
-  ([rocks?]
-   ;; FIXME: don't hardcode config
-   (crux/start-cluster-node {:bootstrap-servers "localhost:9092"
-                             :kv-backend (if rocks? "crux.kv.rocksdb.RocksKv" "crux.kv.memdb.MemKv")
-                             :db-dir "data/db-dir-cluster"
-                             :event-log-dir "data/eventlog-cluster"
-                             :tx-topic "label-maker-tx"
-                             :doc-topic "label-maker-doc"}))
-  ([]
-  ;; Note that we're using in-memory KV as default for now since RocksKv seems flaky with cluster node.
-   (start-cluster-node false)))
 
 ;;
 ;; Convenience functions
@@ -109,6 +96,15 @@
   [node text-id]
   (replace-crux-id :text/id (entity node text-id)))
 
+(defrecord CruxComponent []
+  component/Lifecycle
+  (start [{:keys [crux-config] :as component}]
+    (assoc component :node (crux/start-cluster-node crux-config)))
+  (stop [component]
+    (when-let [node (:node component)]
+      (.close node))
+    (dissoc component :node)))
+
 (comment
   (require '[clj-uuid :as uuid])
 
@@ -146,13 +142,7 @@
                          :text/raw "the quick brown fox jumps over the lazy dog"
                          :text/phrases #{}}))))
 
-  (def node (start-cluster-node))
-
-  (seed-db! node)
-  (.close node)
-
-  ;; Example of using the db-node in a running system
-  (seed-db! (:db-node @user/sys))
-
-  (full-query (:db-node @user/sys))
+  ;; Examples of using the db node from a running system
+  (seed-db! (get-in (user/system) [:crux :node]))
+  (full-query (get-in (user/system) [:crux :node]))
   )
